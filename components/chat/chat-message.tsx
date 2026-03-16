@@ -76,7 +76,7 @@ export function ChatMessage({ message, onEdit, onDelete }: ChatMessageProps) {
           </div>
         )}
       </div>
-      <div className="flex-1 space-y-2 overflow-hidden">
+      <div className="flex-1 min-w-0 space-y-2 overflow-hidden">
         {message.webSearchUsed && (
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs">
@@ -118,7 +118,7 @@ export function ChatMessage({ message, onEdit, onDelete }: ChatMessageProps) {
           </div>
         )}
 
-        <div className="prose prose-sm dark:prose-invert max-w-none">
+        <div className="prose prose-sm dark:prose-invert max-w-none break-words [overflow-wrap:anywhere]">
           {isEditing ? (
             <div className="space-y-2">
               <textarea

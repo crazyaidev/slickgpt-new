@@ -53,7 +53,7 @@ export function ChatHistorySidebar({ onClose }: ChatHistorySidebarProps) {
   };
 
   return (
-    <div className="flex h-full w-full flex-col border-r border-border bg-sidebar md:w-64">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col border-r border-border bg-sidebar md:w-64">
       {/* Header */}
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-3 md:px-4">
         <h2 className="truncate text-sm font-semibold text-sidebar-foreground">
@@ -80,7 +80,7 @@ export function ChatHistorySidebar({ onClose }: ChatHistorySidebarProps) {
       </div>
 
       {/* Chat List */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-1 p-2">
           {agentChats.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -91,7 +91,7 @@ export function ChatHistorySidebar({ onClose }: ChatHistorySidebarProps) {
               <div
                 key={session.id}
                 className={cn(
-                  'group flex w-full items-center rounded-lg text-sm transition-colors overflow-hidden',
+                  'group flex w-full min-w-0 items-center overflow-hidden rounded-lg text-sm transition-colors',
                   currentChatId === session.id
                     ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                     : 'text-sidebar-foreground hover:bg-sidebar-accent/50',

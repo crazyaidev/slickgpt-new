@@ -293,7 +293,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col md:flex-row overflow-hidden">
+    <div className="fixed inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden md:flex-row">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -306,12 +306,12 @@ export default function ChatPage() {
       <div
         className={`${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } fixed inset-y-0 left-0 z-50 w-64 transition-transform md:relative md:translate-x-0`}>
+        } fixed inset-y-0 left-0 z-50 w-64 transition-transform md:relative md:shrink-0 md:translate-x-0`}>
         <ChatHistorySidebar onClose={() => setSidebarOpen(false)} />
       </div>
 
       {/* Main chat area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* Fixed Header */}
         <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-3 md:px-4">
           <Button
@@ -337,13 +337,13 @@ export default function ChatPage() {
               {currentAgent.model}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <Select
               value={currentAgent.model}
               onValueChange={handleModelChange}
               disabled={modelsLoading}>
               <SelectTrigger
-                className="h-8 w-[140px] md:h-9 md:w-[160px]"
+                className="h-8 w-[120px] max-w-[42vw] sm:w-[140px] md:h-9 md:w-[160px]"
                 size="sm">
                 <SelectValue
                   placeholder={modelsLoading ? 'Loading...' : 'Select model'}
@@ -370,10 +370,10 @@ export default function ChatPage() {
         </div>
 
         {/* Scrollable Messages Area */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-3xl px-4">
+        <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col px-3 md:px-4">
             {currentChat.messages.length === 0 ? (
-              <div className="flex h-full min-h-[300px] items-center justify-center">
+              <div className="flex min-h-[300px] flex-1 items-center justify-center py-10">
                 <div className="text-center">
                   <h3 className="mb-2 text-lg font-semibold">
                     Start a conversation
@@ -393,7 +393,7 @@ export default function ChatPage() {
                 />
               ))
             )}
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} className="h-4 shrink-0" />
           </div>
         </div>
 
