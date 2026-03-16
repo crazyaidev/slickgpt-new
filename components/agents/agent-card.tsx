@@ -59,22 +59,24 @@ export function AgentCard({ agent }: AgentCardProps) {
 
   return (
     <>
-      <Card className="h-full gap-0 py-0 transition-shadow hover:shadow-md">
-        <CardHeader className="gap-3 px-4 pb-3 pt-4">
+      <Card className="h-full min-h-64 gap-0 py-0 transition-shadow hover:shadow-md">
+        <CardHeader className="gap-3 px-5 pb-4 pt-5">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10">
               <Bot className="h-5 w-5 text-primary" />
             </div>
-            <div className="min-w-0 flex-1">
-              <CardTitle className="truncate text-base">{agent.name}</CardTitle>
-              <CardDescription className="mt-1 truncate text-xs">
+            <div className="min-w-0 flex-1 space-y-1">
+              <CardTitle className="break-words text-base leading-snug whitespace-normal">
+                {agent.name}
+              </CardTitle>
+              <CardDescription className="text-xs">
                 {agent.model}
               </CardDescription>
             </div>
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-3 px-4 pb-3">
+        <CardContent className="space-y-4 px-5 pb-4">
           <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
             {agent.systemPrompt}
           </p>
@@ -100,7 +102,7 @@ export function AgentCard({ agent }: AgentCardProps) {
           </div>
         </CardContent>
 
-        <CardFooter className="mt-auto gap-2 px-4 pb-4 pt-0">
+        <CardFooter className="mt-auto gap-2 px-5 pb-5 pt-0">
           <Button className="flex-1" size="sm" onClick={handleChatClick}>
             <MessageSquare className="h-4 w-4" />
             Chat
