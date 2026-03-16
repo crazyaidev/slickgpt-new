@@ -3,11 +3,11 @@
 import type { Message } from "@/lib/types"
 import { Bot, Copy, User, Check, Globe, ExternalLink, Edit2, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import ReactMarkdown from "react-markdown"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
+import { MessageMarkdown } from "@/components/chat/message-markdown"
 
 interface ChatMessageProps {
   message: Message
@@ -118,7 +118,7 @@ export function ChatMessage({ message, onEdit, onDelete }: ChatMessageProps) {
           </div>
         )}
 
-        <div className="prose prose-sm dark:prose-invert max-w-none break-words [overflow-wrap:anywhere]">
+        <div className="min-w-0">
           {isEditing ? (
             <div className="space-y-2">
               <textarea
@@ -137,23 +137,7 @@ export function ChatMessage({ message, onEdit, onDelete }: ChatMessageProps) {
               </div>
             </div>
           ) : message.content ? (
-            <ReactMarkdown
-              components={{
-                a: ({ href, children }) => (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline inline-flex items-center gap-1"
-                  >
-                    {children}
-                    <ExternalLink className="h-3 w-3 inline" />
-                  </a>
-                ),
-              }}
-            >
-              {message.content}
-            </ReactMarkdown>
+            <MessageMarkdown content={message.content} />
           ) : (
             <div className="flex items-center gap-2 text-muted-foreground">
               <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "0ms" }} />
