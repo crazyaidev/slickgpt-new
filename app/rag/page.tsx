@@ -1,16 +1,22 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
-import { SidebarNav } from "@/components/sidebar-nav"
+import { Suspense, useEffect, useState } from "react"
+import {
+  Database,
+  FileText,
+  Globe,
+  Loader2,
+  Search,
+  Sparkles,
+} from "lucide-react"
+
+import { AppShell } from "@/components/app-shell"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 import { useStore } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
-import { Database, FileText, Globe, Loader2, Search } from "lucide-react"
 import { storage } from "@/lib/storage"
 import type { VectorDocument } from "@/lib/types"
 
@@ -19,15 +25,15 @@ function RAGContent() {
   const { toast } = useToast()
   const [documents, setDocuments] = useState<VectorDocument[]>([])
 
-  const [url, setUrl] = useState<string>("")
+  const [url, setUrl] = useState("")
   const [isEmbeddingUrl, setIsEmbeddingUrl] = useState(false)
 
-  const [fileContent, setFileContent] = useState<string>("")
-  const [fileName, setFileName] = useState<string>("")
+  const [fileContent, setFileContent] = useState("")
+  const [fileName, setFileName] = useState("")
   const [isEmbeddingFile, setIsEmbeddingFile] = useState(false)
 
-  const [query, setQuery] = useState<string>("")
-  const [queryResult, setQueryResult] = useState<string>("")
+  const [query, setQuery] = useState("")
+  const [queryResult, setQueryResult] = useState("")
   const [isQuerying, setIsQuerying] = useState(false)
 
   useEffect(() => {
@@ -81,8 +87,6 @@ function RAGContent() {
         throw new Error("Failed to create embedding")
       }
 
-      const embeddingData = await embeddingResponse.json()
-
       const newDoc: VectorDocument = {
         id: Date.now().toString(),
         content: cleanText,
@@ -98,16 +102,16 @@ function RAGContent() {
       storage.saveVectorDocuments(updatedDocs)
 
       toast({
-        title: "URL embedded successfully!",
-        description: "The URL content has been embedded and stored.",
+        title: "URL embedded",
+        description: "The page content has been added to your local knowledge store.",
       })
 
       setUrl("")
     } catch (error) {
-      console.error("[v0] Error embedding URL:", error)
+      console.error("[Knowledge] Error embedding URL:", error)
       toast({
         title: "Error",
-        description: "Failed to embed URL. Please try again.",
+        description: "Failed to embed the URL. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -153,8 +157,6 @@ function RAGContent() {
         throw new Error("Failed to create embedding")
       }
 
-      const embeddingData = await embeddingResponse.json()
-
       const newDoc: VectorDocument = {
         id: Date.now().toString(),
         content: fileContent,
@@ -170,17 +172,17 @@ function RAGContent() {
       storage.saveVectorDocuments(updatedDocs)
 
       toast({
-        title: "File embedded successfully!",
-        description: "The file content has been embedded and stored.",
+        title: "File embedded",
+        description: "The file content has been added to your local knowledge store.",
       })
 
       setFileContent("")
       setFileName("")
     } catch (error) {
-      console.error("[v0] Error embedding file:", error)
+      console.error("[Knowledge] Error embedding file:", error)
       toast({
         title: "Error",
-        description: "Failed to embed file. Please try again.",
+        description: "Failed to embed the file. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -192,7 +194,7 @@ function RAGContent() {
     if (!query.trim()) {
       toast({
         title: "Query required",
-        description: "Please enter a query to search.",
+        description: "Please enter a question to search your knowledge.",
         variant: "destructive",
       })
       return
@@ -210,7 +212,7 @@ function RAGContent() {
     if (documents.length === 0) {
       toast({
         title: "No documents",
-        description: "Please embed some URLs or files first.",
+        description: "Embed a URL or file first so there is something to query.",
         variant: "destructive",
       })
       return
@@ -229,7 +231,7 @@ function RAGContent() {
           Authorization: `Bearer ${apiKeys.openai}`,
         },
         body: JSON.stringify({
-          model: "gpt-3.5-turbo",
+          model: "gpt-4o-mini",
           messages: [
             {
               role: "system",
@@ -252,14 +254,14 @@ function RAGContent() {
       setQueryResult(data.choices[0].message.content)
 
       toast({
-        title: "Query completed!",
-        description: "Retrieved answer from your knowledge base.",
+        title: "Knowledge queried",
+        description: "The answer below was generated from your embedded content.",
       })
     } catch (error) {
-      console.error("[v0] Error querying RAG:", error)
+      console.error("[Knowledge] Error querying:", error)
       toast({
         title: "Error",
-        description: "Failed to query. Please try again.",
+        description: "Failed to query the knowledge store. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -268,217 +270,258 @@ function RAGContent() {
   }
 
   return (
-    <div className="fixed inset-0 flex overflow-hidden">
-      <SidebarNav />
-      <main className="ml-64 flex flex-1 flex-col overflow-hidden">
-        <div className="flex h-16 shrink-0 items-center border-b border-border bg-card px-8">
-          <h2 className="text-xl font-semibold text-foreground">RAG Pipeline</h2>
-        </div>
+    <AppShell
+      title="RAG Pipeline"
+      description="Bring URLs and documents into the workspace so assistants can answer with more context."
+    >
+      <div className="space-y-6">
+        <section className="rounded-[2rem] border border-border/70 bg-card/80 p-6 shadow-[0_20px_80px_-52px_rgba(0,0,0,0.65)] backdrop-blur md:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                Retrieval workspace
+              </div>
+              <h2 className="text-3xl font-semibold tracking-tight">
+                Load source material once, then reuse it in every chat.
+              </h2>
+              <p className="mt-3 text-base leading-7 text-muted-foreground">
+                Save background context locally so proposal writing, research,
+                and answer generation can start from better information.
+              </p>
+            </div>
 
-        <div className="flex-1 overflow-y-auto p-8">
-          <div className="mb-8">
-            <h3 className="mb-2 text-2xl font-bold text-foreground">Retrieval-Augmented Generation</h3>
-            <p className="text-base text-muted-foreground">
-              Build a knowledge base by embedding URLs and files, then query them with your agents
-            </p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <KnowledgeStatCard
+                icon={Database}
+                label="Documents"
+                value={documents.length}
+              />
+              <KnowledgeStatCard
+                icon={Globe}
+                label="URLs"
+                value={documents.filter((doc) => doc.metadata.type === "url").length}
+              />
+              <KnowledgeStatCard
+                icon={FileText}
+                label="Files"
+                value={documents.filter((doc) => doc.metadata.type === "file").length}
+              />
+            </div>
           </div>
+        </section>
 
-          <div className="mb-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Database className="h-5 w-5 text-primary" />
-                  Vector Database
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">{documents.length}</div>
-                <p className="text-sm text-muted-foreground">Documents embedded</p>
-              </CardContent>
-            </Card>
+        <Tabs defaultValue="url" className="space-y-5">
+          <TabsList className="h-auto w-full flex-wrap justify-start gap-2 rounded-[1.75rem] border border-border/70 bg-card/70 p-2">
+            <TabsTrigger value="url" className="h-10 rounded-2xl px-4">
+              <Globe className="h-4 w-4" />
+              Embed URL
+            </TabsTrigger>
+            <TabsTrigger value="file" className="h-10 rounded-2xl px-4">
+              <FileText className="h-4 w-4" />
+              Embed file
+            </TabsTrigger>
+            <TabsTrigger value="query" className="h-10 rounded-2xl px-4">
+              <Search className="h-4 w-4" />
+              Query
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="h-10 rounded-2xl px-4">
+              <Database className="h-4 w-4" />
+              Documents
+            </TabsTrigger>
+          </TabsList>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Globe className="h-5 w-5 text-primary" />
-                  URL Sources
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">
-                  {documents.filter((d) => d.metadata.type === "url").length}
-                </div>
-                <p className="text-sm text-muted-foreground">URLs embedded</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <FileText className="h-5 w-5 text-primary" />
-                  File Sources
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">
-                  {documents.filter((d) => d.metadata.type === "file").length}
-                </div>
-                <p className="text-sm text-muted-foreground">Files embedded</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Tabs defaultValue="url" className="space-y-6">
-            <TabsList className="w-full justify-start overflow-x-auto">
-              <TabsTrigger value="url">Embed URL</TabsTrigger>
-              <TabsTrigger value="file">Embed File</TabsTrigger>
-              <TabsTrigger value="query">Query RAG</TabsTrigger>
-              <TabsTrigger value="documents">Documents</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="url">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Embed URL Content</CardTitle>
-                  <CardDescription>
-                    Fetch content from a URL, create embeddings, and add to your knowledge base
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="url">URL</Label>
-                    <Input
-                      id="url"
-                      type="url"
-                      placeholder="https://example.com/article"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                    />
-                  </div>
-
-                  <Button onClick={handleEmbedUrl} disabled={isEmbeddingUrl} className="w-full">
-                    {isEmbeddingUrl && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isEmbeddingUrl ? "Embedding..." : "Embed URL"}
-                  </Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="file">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Embed File Content</CardTitle>
-                  <CardDescription>
-                    Paste or upload file content to create embeddings and add to your knowledge base
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="file-name">File Name (Optional)</Label>
-                    <Input
-                      id="file-name"
-                      placeholder="document.txt"
-                      value={fileName}
-                      onChange={(e) => setFileName(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="file-content">File Content</Label>
-                    <Textarea
-                      id="file-content"
-                      placeholder="Paste your file content here..."
-                      value={fileContent}
-                      onChange={(e) => setFileContent(e.target.value)}
-                      rows={10}
-                    />
-                  </div>
-
-                  <Button onClick={handleEmbedFile} disabled={isEmbeddingFile} className="w-full">
-                    {isEmbeddingFile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isEmbeddingFile ? "Embedding..." : "Embed File"}
-                  </Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="query">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Query Knowledge Base</CardTitle>
-                  <CardDescription>Search your embedded documents and get AI-powered answers</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="query">Query</Label>
-                    <Textarea
-                      id="query"
-                      placeholder="Ask a question about your embedded documents..."
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-
-                  <Button onClick={handleQuery} disabled={isQuerying} className="w-full">
-                    {isQuerying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isQuerying ? "Searching..." : "Query"}
-                    {!isQuerying && <Search className="ml-2 h-4 w-4" />}
-                  </Button>
-
-                  {queryResult && (
-                    <div className="space-y-2">
-                      <Label>Answer</Label>
-                      <div className="rounded-lg border border-border bg-muted p-4">
-                        <p className="whitespace-pre-wrap text-sm text-foreground">{queryResult}</p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="documents">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Embedded Documents</CardTitle>
-                  <CardDescription>View all documents in your knowledge base</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {documents.length === 0 ? (
-                    <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-                      No documents embedded yet
-                    </div>
+          <TabsContent value="url">
+            <KnowledgePanel
+              title="Embed URL content"
+              description="Fetch a page, strip it down to text, and store it locally for later retrieval."
+            >
+              <div className="space-y-4">
+                <Input
+                  type="url"
+                  placeholder="https://example.com/article"
+                  value={url}
+                  onChange={(event) => setUrl(event.target.value)}
+                  className="h-12 rounded-2xl border-border/70 bg-background/60"
+                />
+                <Button
+                  onClick={handleEmbedUrl}
+                  disabled={isEmbeddingUrl}
+                  className="h-11 rounded-2xl px-5"
+                >
+                  {isEmbeddingUrl ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <div className="space-y-4">
-                      {documents.map((doc) => (
-                        <div key={doc.id} className="rounded-lg border border-border p-4">
-                          <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="flex items-center gap-2">
-                              {doc.metadata.type === "url" ? (
-                                <Globe className="h-4 w-4 shrink-0 text-primary" />
-                              ) : (
-                                <FileText className="h-4 w-4 shrink-0 text-primary" />
-                              )}
-                              <span className="break-all font-medium text-foreground text-sm md:text-base">
-                                {doc.metadata.source}
-                              </span>
-                            </div>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(doc.metadata.createdAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <p className="line-clamp-2 text-sm text-muted-foreground">{doc.content}</p>
-                        </div>
-                      ))}
-                    </div>
+                    <Globe className="h-4 w-4" />
                   )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </main>
+                  {isEmbeddingUrl ? "Embedding..." : "Embed URL"}
+                </Button>
+              </div>
+            </KnowledgePanel>
+          </TabsContent>
+
+          <TabsContent value="file">
+            <KnowledgePanel
+              title="Embed file content"
+              description="Paste notes, proposals, or source material and keep it in the workspace for later use."
+            >
+              <div className="space-y-4">
+                <Input
+                  placeholder="document.txt"
+                  value={fileName}
+                  onChange={(event) => setFileName(event.target.value)}
+                  className="h-12 rounded-2xl border-border/70 bg-background/60"
+                />
+                <Textarea
+                  placeholder="Paste your file content here..."
+                  value={fileContent}
+                  onChange={(event) => setFileContent(event.target.value)}
+                  rows={10}
+                  className="rounded-[1.5rem] border-border/70 bg-background/60"
+                />
+                <Button
+                  onClick={handleEmbedFile}
+                  disabled={isEmbeddingFile}
+                  className="h-11 rounded-2xl px-5"
+                >
+                  {isEmbeddingFile ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText className="h-4 w-4" />
+                  )}
+                  {isEmbeddingFile ? "Embedding..." : "Embed file"}
+                </Button>
+              </div>
+            </KnowledgePanel>
+          </TabsContent>
+
+          <TabsContent value="query">
+            <KnowledgePanel
+              title="Query your knowledge"
+              description="Ask a question and get an answer grounded in the embedded material above."
+            >
+              <div className="space-y-4">
+                <Textarea
+                  placeholder="Ask a question about your embedded documents..."
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  rows={4}
+                  className="rounded-[1.5rem] border-border/70 bg-background/60"
+                />
+                <Button
+                  onClick={handleQuery}
+                  disabled={isQuerying}
+                  className="h-11 rounded-2xl px-5"
+                >
+                  {isQuerying ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                  {isQuerying ? "Searching..." : "Query knowledge"}
+                </Button>
+
+                {queryResult ? (
+                  <div className="rounded-[1.5rem] border border-border/70 bg-background/60 p-5">
+                    <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
+                      Answer
+                    </p>
+                    <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">
+                      {queryResult}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </KnowledgePanel>
+          </TabsContent>
+
+          <TabsContent value="documents">
+            <KnowledgePanel
+              title="Embedded documents"
+              description="Everything stored locally for retrieval and future assistant context."
+            >
+              {documents.length === 0 ? (
+                <div className="rounded-[1.5rem] border border-dashed border-border/80 bg-background/55 p-6 text-sm text-muted-foreground">
+                  No documents yet. Embed a URL or paste a file to start building
+                  the workspace memory.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {documents.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="rounded-[1.5rem] border border-border/70 bg-background/60 p-4"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                            {doc.metadata.type === "url" ? (
+                              <Globe className="h-4 w-4" />
+                            ) : (
+                              <FileText className="h-4 w-4" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="break-all font-medium">
+                              {doc.metadata.source}
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {new Date(doc.metadata.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="mt-4 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                        {doc.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </KnowledgePanel>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </AppShell>
+  )
+}
+
+function KnowledgeStatCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Database
+  label: string
+  value: number
+}) {
+  return (
+    <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <Icon className="h-5 w-5" />
+      </div>
+      <p className="text-2xl font-semibold">{value}</p>
+      <p className="text-sm text-muted-foreground">{label}</p>
+    </div>
+  )
+}
+
+function KnowledgePanel({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-[2rem] border border-border/70 bg-card/80 p-6 backdrop-blur md:p-7">
+      <h3 className="text-xl font-semibold">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        {description}
+      </p>
+      <div className="mt-6">{children}</div>
     </div>
   )
 }

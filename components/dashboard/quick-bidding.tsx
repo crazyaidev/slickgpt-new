@@ -15,7 +15,7 @@ export function QuickBidding() {
   const [jobDescription, setJobDescription] = useState("")
   const [generatedCoverLetter, setGeneratedCoverLetter] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
-  const { currentAgentId, agents, settings } = useStore()
+  const { currentAgentId, agents, apiKeys } = useStore()
   const { toast } = useToast()
 
   const handleGenerate = async () => {
@@ -28,7 +28,7 @@ export function QuickBidding() {
       return
     }
 
-    if (!settings.openaiApiKey) {
+    if (!apiKeys.openai) {
       toast({
         title: "OpenAI API key missing",
         description: "Please add your OpenAI API key in Settings.",
@@ -54,7 +54,7 @@ export function QuickBidding() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${settings.openaiApiKey}`,
+          Authorization: `Bearer ${apiKeys.openai}`,
         },
         body: JSON.stringify({
           model: agent?.model || "gpt-3.5-turbo",
@@ -67,7 +67,7 @@ export function QuickBidding() {
             },
             {
               role: "user",
-              content: `Generate a cover letter for this Upwork job:\n\n${jobDescription}\n\nUser Profile:\n${settings.userProfile || "No profile provided"}`,
+              content: `Generate a cover letter for this Upwork job:\n\n${jobDescription}`,
             },
           ],
           // Only add temperature for models that support it (not o1/o3 reasoning models)

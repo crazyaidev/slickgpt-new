@@ -1,13 +1,22 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useStore } from '@/lib/store';
-import { storage } from '@/lib/storage';
+import Link from 'next/link';
+import {
+  ArrowLeft,
+  Bot,
+  Database,
+  Globe,
+  Menu,
+  Settings2,
+  Sparkles,
+} from 'lucide-react';
+
+import { CreateAgentDialog } from '@/components/agents/create-agent-dialog';
 import { ChatHistorySidebar } from '@/components/chat/chat-history-sidebar';
-import { SystemPromptSidebar } from '@/components/chat/system-prompt-sidebar';
-import { ChatMessage } from '@/components/chat/chat-message';
 import { ChatInput } from '@/components/chat/chat-input';
+import { ChatMessage } from '@/components/chat/chat-message';
+import { SystemPromptSidebar } from '@/components/chat/system-prompt-sidebar';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -16,13 +25,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useOpenAIModels } from '@/hooks/use-openai-models';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Menu, Settings } from 'lucide-react';
-import Link from 'next/link';
+import { useOpenAIModels } from '@/hooks/use-openai-models';
+import { useStore } from '@/lib/store';
+import { cn } from '@/lib/utils';
+
+const waitForNextPaint = () =>
+  new Promise<void>((resolve) => {
+    if (typeof window === 'undefined') {
+      resolve();
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
+    });
+  });
 
 export default function ChatPage() {
-  const router = useRouter();
   const {
     currentAgentId,
     currentChatId,
@@ -30,17 +50,23 @@ export default function ChatPage() {
     chatSessions,
     addMessage,
     updateMessage,
+    setMessageMetadata,
     editMessage,
     deleteMessage,
+    truncateChatFromMessage,
+    refreshChatTitle,
     updateAgent,
     loadFromStorage,
     apiKeys,
+    createNewChat,
+    setCurrentAgentId,
+    setCurrentChatId,
   } = useStore();
   const { toast } = useToast();
   const { models: openaiModels, isLoading: modelsLoading } = useOpenAIModels();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [systemPromptSidebarOpen, setSystemPromptSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -48,38 +74,73 @@ export default function ChatPage() {
     loadFromStorage();
   }, [loadFromStorage]);
 
+  const currentAgent = agents.find((agent) => agent.id === currentAgentId);
+  const agentChats = currentAgentId
+    ? [...chatSessions]
+        .filter((session) => session.agentId === currentAgentId)
+        .sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+        )
+    : [];
+  const currentChat =
+    currentAgentId && currentChatId
+      ? chatSessions.find(
+          (session) =>
+            session.id === currentChatId && session.agentId === currentAgentId,
+        ) ?? null
+      : null;
+  const resolvedChat = currentChat ?? agentChats[0] ?? null;
+  const resolvedChatId = resolvedChat?.id ?? null;
+
   useEffect(() => {
     if (!currentAgentId) {
-      router.push('/agents');
+      return;
     }
-  }, [currentAgentId, router]);
+
+    if (!resolvedChatId) {
+      createNewChat(currentAgentId);
+      return;
+    }
+
+    if (resolvedChatId !== currentChatId) {
+      setCurrentChatId(resolvedChatId);
+    }
+  }, [
+    createNewChat,
+    currentAgentId,
+    currentChatId,
+    resolvedChatId,
+    setCurrentChatId,
+  ]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatSessions, currentChatId]);
-
-  const currentAgent = agents.find((a) => a.id === currentAgentId);
-  const currentChat = chatSessions.find((s) => s.id === currentChatId);
+  }, [resolvedChatId, resolvedChat?.messages.length]);
 
   const handleModelChange = (newModel: string) => {
-    if (!currentAgentId || !currentAgent) return;
+    if (!currentAgentId || !currentAgent) {
+      return;
+    }
 
     updateAgent(currentAgentId, { model: newModel });
     toast({
       title: 'Model updated',
-      description: `Model changed to ${newModel}. This change will be reflected in the agent editor.`,
+      description: `The agent will now use ${newModel}.`,
     });
   };
 
-  // Core function to make API call without adding user message
   const makeAssistantResponse = async (
+    chatId: string,
     webSearchEnabled?: boolean,
   ) => {
-    if (!currentAgent || !currentChatId) return;
+    if (!currentAgent) {
+      return;
+    }
 
     if (!apiKeys.openai) {
       toast({
-        title: 'API Key Missing',
+        title: 'API key missing',
         description: 'Please add your OpenAI API key in Settings.',
         variant: 'destructive',
       });
@@ -92,83 +153,81 @@ export default function ChatPage() {
 
     try {
       assistantMessageId = crypto.randomUUID();
-      addMessage(currentChatId, {
+
+      addMessage(chatId, {
         id: assistantMessageId,
         role: 'assistant',
         content: '',
         webSearchUsed: webSearchEnabled,
       });
 
-      // Import web search utilities
       const { makeWebSearchAPICall } = await import('@/lib/web-search');
 
-      // Build messages array for API from current chat messages
-      // Get fresh state from store to ensure we have the latest messages after editing
       const freshChatSessions = useStore.getState().chatSessions;
-      const currentChatSession = freshChatSessions.find((s) => s.id === currentChatId);
-      const apiMessages = currentChatSession!.messages.map((m) => ({
-        role: m.role,
-        content: m.content,
+      const currentChatSession = freshChatSessions.find(
+        (session) => session.id === chatId,
+      );
+
+      if (!currentChatSession) {
+        throw new Error('Could not find the active chat session.');
+      }
+
+      const titleContextKeyBeforeResponse = currentChatSession.titleContextKey;
+
+      const apiMessages = currentChatSession.messages.map((message) => ({
+        role: message.role,
+        content: message.content,
       }));
 
-      // Accumulate content for streaming
       let accumulatedContent = '';
 
-      // Make API call with web search support
-      const {
-        content: responseContent,
-        sources,
-        citations,
-      } = await makeWebSearchAPICall(
+      const { sources, citations } = await makeWebSearchAPICall(
         apiKeys.openai,
         currentAgent.model,
         currentAgent.systemPrompt,
         apiMessages,
         (webSearchEnabled && currentAgent.enableWebSearch) || false,
         (chunk) => {
-          if (chunk) {
-            accumulatedContent += chunk;
-            updateMessage(
-              currentChatId,
-              assistantMessageId,
-              accumulatedContent,
-            );
+          if (!chunk) {
+            return;
           }
+
+          accumulatedContent += chunk;
+          updateMessage(chatId, assistantMessageId, accumulatedContent);
         },
       );
 
-      // Update the message with final content and metadata
-      // Get fresh state again to ensure we have the latest messages
-      const finalChatSessions = useStore.getState().chatSessions;
-      const updatedChatSession = finalChatSessions.find(
-        (s) => s.id === currentChatId,
-      );
-      if (updatedChatSession) {
-        const finalMessage = updatedChatSession.messages.find(
-          (m) => m.id === assistantMessageId,
-        );
+      setMessageMetadata(chatId, assistantMessageId, {
+        citations: citations.length > 0 ? citations : undefined,
+        sources: sources.length > 0 ? sources : undefined,
+        webSearchUsed:
+          Boolean(webSearchEnabled) &&
+          Boolean(currentAgent.enableWebSearch) &&
+          (sources.length > 0 || citations.length > 0),
+      });
 
-        if (finalMessage) {
-          finalMessage.citations = citations.length > 0 ? citations : undefined;
-          finalMessage.sources = sources.length > 0 ? sources : undefined;
-          finalMessage.webSearchUsed =
-            webSearchEnabled &&
-            currentAgent.enableWebSearch &&
-            (sources.length > 0 || citations.length > 0);
-        }
+      const latestChatSession = useStore
+        .getState()
+        .chatSessions.find((session) => session.id === chatId);
+
+      if (
+        latestChatSession &&
+        latestChatSession.titleContextKey !== titleContextKeyBeforeResponse
+      ) {
+        await waitForNextPaint();
+        void refreshChatTitle(chatId);
       }
     } catch (error) {
       console.error('Error sending message:', error);
 
-      // Remove the empty assistant message that was created
-      deleteMessage(currentChatId, assistantMessageId);
+      deleteMessage(chatId, assistantMessageId);
 
       toast({
         title: 'Error',
         description:
           error instanceof Error
             ? error.message
-            : 'Failed to get response. Please check your API key and try again.',
+            : 'Failed to get a response. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -180,230 +239,332 @@ export default function ChatPage() {
     content: string,
     webSearchEnabled?: boolean,
   ) => {
-    if (!currentAgent || !currentChatId) return;
+    if (!currentAgent) {
+      return;
+    }
 
-    // Add user message
-    const userMessage = addMessage(currentChatId, {
+    const chatId = resolvedChatId ?? createNewChat(currentAgent.id);
+
+    addMessage(chatId, {
       role: 'user',
       content,
       webSearchUsed: webSearchEnabled,
     });
 
-    // Get assistant response
-    await makeAssistantResponse(webSearchEnabled);
+    await makeAssistantResponse(chatId, webSearchEnabled);
   };
 
   const handleEditMessage = async (messageId: string, content: string) => {
-    if (!currentChatId || !currentAgent) return;
+    if (!resolvedChatId || !currentAgent) {
+      return;
+    }
 
-    // Find the message to check its role
-    const currentChatSession = chatSessions.find((s) => s.id === currentChatId);
+    const currentChatSession = chatSessions.find(
+      (session) => session.id === resolvedChatId,
+    );
     const messageToEdit = currentChatSession?.messages.find(
-      (m) => m.id === messageId,
+      (message) => message.id === messageId,
     );
 
-    if (!messageToEdit) return;
+    if (!messageToEdit) {
+      return;
+    }
 
-    // Different behavior based on message role
     if (messageToEdit.role === 'user') {
-      // Store the webSearchUsed flag before editing
       const webSearchUsed = messageToEdit.webSearchUsed;
 
-      // For user messages: edit and truncate messages after it
-      editMessage(currentChatId, messageId, content);
-
-      // Trigger a new API call without creating a new user message
-      await makeAssistantResponse(webSearchUsed);
-    } else {
-      // For assistant messages: just update the content without truncating
-      updateMessage(currentChatId, messageId, content);
+      editMessage(resolvedChatId, messageId, content);
+      await makeAssistantResponse(resolvedChatId, webSearchUsed);
+      return;
     }
+
+    updateMessage(resolvedChatId, messageId, content);
+    void refreshChatTitle(resolvedChatId);
   };
 
   const handleDeleteMessage = (messageId: string) => {
-    if (!currentChatId) return;
+    if (!resolvedChatId) {
+      return;
+    }
 
-    const currentChatSession = chatSessions.find((s) => s.id === currentChatId);
+    const currentChatSession = chatSessions.find(
+      (session) => session.id === resolvedChatId,
+    );
     const messageToDelete = currentChatSession?.messages.find(
-      (m) => m.id === messageId,
+      (message) => message.id === messageId,
     );
 
-    if (!messageToDelete) return;
+    if (!messageToDelete || !currentChatSession) {
+      return;
+    }
 
-    // If it's a user message, delete it and all following messages
     if (messageToDelete.role === 'user') {
       if (
         confirm(
-          'Are you sure you want to delete this message and all following messages?',
+          'Delete this message and everything that came after it in the conversation?',
         )
       ) {
-        // Find the index of the message to delete
-        const messageIndex = currentChatSession?.messages.findIndex(
-          (m) => m.id === messageId,
-        );
-        if (
-          messageIndex !== undefined &&
-          messageIndex !== -1 &&
-          currentChatSession
-        ) {
-          // Delete all messages from this index onward
-          const messagesToKeep = currentChatSession.messages.slice(
-            0,
-            messageIndex,
-          );
-
-          // Update the chat session with only the messages to keep
-          const updatedChatSessions = chatSessions.map((session) => {
-            if (session.id === currentChatId) {
-              return {
-                ...session,
-                messages: messagesToKeep,
-                updatedAt: new Date().toISOString(),
-              };
-            }
-            return session;
-          });
-
-          // Update the store directly
-          useStore.setState({ chatSessions: updatedChatSessions });
-          storage.saveChatSessions(updatedChatSessions);
-        }
+        truncateChatFromMessage(resolvedChatId, messageId);
+        void refreshChatTitle(resolvedChatId);
         setIsLoading(false);
       }
-    } else {
-      // For assistant messages, just delete that message
-      if (confirm('Are you sure you want to delete this message?')) {
-        deleteMessage(currentChatId, messageId);
-        setIsLoading(false);
-      }
+
+      return;
+    }
+
+    if (confirm('Delete this assistant reply?')) {
+      deleteMessage(resolvedChatId, messageId);
+      void refreshChatTitle(resolvedChatId);
+      setIsLoading(false);
     }
   };
 
-  if (!currentAgent || !currentChat) {
+  if (!currentAgent) {
     return (
-      <div className="flex h-screen items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-muted-foreground">No agent selected</p>
-          <Link href="/agents">
-            <Button className="mt-4">Select an Agent</Button>
-          </Link>
-        </div>
+      <div className="fixed inset-0 overflow-hidden bg-background text-foreground">
+        <main className="flex h-full items-center justify-center overflow-y-auto px-6 py-12">
+          <div className="mx-auto w-full max-w-3xl text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Sparkles className="h-7 w-7" />
+            </div>
+            <h1 className="mt-6 text-3xl font-semibold tracking-tight">
+              Choose an agent to start chatting
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Each agent keeps its own conversation history, so you can switch
+              between workflows without mixing context.
+            </p>
+
+            {agents.length > 0 ? (
+              <div className="mt-8 grid gap-3 md:grid-cols-2">
+                {agents.slice(0, 6).map((agent) => (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    onClick={() => setCurrentAgentId(agent.id)}
+                    className="rounded-[1.5rem] border border-border bg-card p-5 text-left transition-colors hover:bg-accent/40"
+                  >
+                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      <Bot className="h-5 w-5" />
+                    </div>
+                    <p className="font-medium">{agent.name}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {agent.model}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-8 flex justify-center">
+                <CreateAgentDialog />
+              </div>
+            )}
+          </div>
+        </main>
       </div>
     );
   }
 
+  const starterPrompts = [
+    {
+      title: 'Draft a proposal',
+      description: 'Turn a project brief into a concise, confident pitch.',
+      prompt:
+        'Help me draft a concise proposal for this project. Start by asking for the job post if needed.',
+      webSearch: false,
+    },
+    {
+      title: 'Summarize the brief',
+      description: 'Pull out goals, risks, and the best next step.',
+      prompt:
+        'Summarize the project brief into client goals, likely risks, and a suggested response strategy.',
+      webSearch: false,
+    },
+    {
+      title: 'Polish rough notes',
+      description: 'Rewrite my thoughts into a cleaner client-facing response.',
+      prompt:
+        'Turn my rough notes into a polished client-facing message with a clear structure.',
+      webSearch: false,
+    },
+    {
+      title: currentAgent.enableWebSearch ? 'Research live context' : 'Plan next steps',
+      description: currentAgent.enableWebSearch
+        ? 'Use web search to gather fresh context before answering.'
+        : 'Break the work into a practical action plan.',
+      prompt: currentAgent.enableWebSearch
+        ? 'Research this company or client and give me a concise brief with useful talking points.'
+        : 'Create a short execution plan for this task with milestones and deliverables.',
+      webSearch: currentAgent.enableWebSearch,
+    },
+  ];
+
   return (
-    <div className="fixed inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden md:flex-row">
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
+    <div className="fixed inset-0 overflow-hidden bg-background text-foreground">
+      <div className="relative flex h-full min-w-0 overflow-hidden">
+        {historyOpen ? (
+          <button
+            type="button"
+            aria-label="Close chat history"
+            className="absolute inset-0 z-20 bg-black/35 md:hidden"
+            onClick={() => setHistoryOpen(false)}
+          />
+        ) : null}
+
         <div
-          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+          className={cn(
+            'absolute inset-y-0 left-0 z-30 transition-transform md:relative md:translate-x-0',
+            historyOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+          )}
+        >
+          <ChatHistorySidebar onClose={() => setHistoryOpen(false)} />
+        </div>
 
-      {/* Left Sidebar - Chat History */}
-      <div
-        className={`${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } fixed inset-y-0 left-0 z-50 w-64 transition-transform md:relative md:shrink-0 md:translate-x-0`}>
-        <ChatHistorySidebar onClose={() => setSidebarOpen(false)} />
-      </div>
+        <div className="flex min-w-0 flex-1 flex-col bg-background">
+          <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background/95 px-4 md:px-6">
+            <div className="flex min-w-0 items-center gap-3">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9 rounded-full md:hidden"
+                onClick={() => setHistoryOpen(true)}
+                aria-label="Open chat history"
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
 
-      {/* Main chat area */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        {/* Fixed Header */}
-        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-3 md:px-4">
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 md:hidden"
-            onClick={() => setSidebarOpen(true)}>
-            <Menu className="h-4 w-4" />
-          </Button>
-          <Link href="/agents">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 md:h-9 md:w-9">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-sm font-semibold text-foreground md:text-base">
-              {currentAgent.name}
-            </h1>
-            <p className="truncate text-xs text-muted-foreground">
-              {currentAgent.model}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full"
+                asChild
+              >
+                <Link href="/agents" aria-label="Back to agents">
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
+              </Button>
+
+              <div className="min-w-0">
+                <h1 className="truncate text-sm font-semibold md:text-base">
+                  {currentAgent.name}
+                </h1>
+                <p className="truncate text-xs text-muted-foreground">
+                  {resolvedChat?.title && resolvedChat.title !== 'New Chat'
+                    ? resolvedChat.title
+                    : currentAgent.model}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Select
+                value={currentAgent.model}
+                onValueChange={handleModelChange}
+                disabled={modelsLoading}
+              >
+                <SelectTrigger className="h-9 w-[150px] rounded-full border-border bg-card md:w-[180px]">
+                  <SelectValue
+                    placeholder={modelsLoading ? 'Loading...' : 'Select model'}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {openaiModels.map((model) => (
+                    <SelectItem key={model} value={model}>
+                      {model}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 rounded-full border-border bg-card"
+                onClick={() => setSystemPromptSidebarOpen(true)}
+              >
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </header>
+
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col px-4 pb-6 pt-6 md:px-8">
+              <div className="mb-6 flex flex-wrap gap-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  {currentAgent.model}
+                </div>
+                {currentAgent.enableWebSearch ? (
+                  <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+                    <Globe className="h-3.5 w-3.5 text-primary" />
+                    Web search available
+                  </div>
+                ) : null}
+                {currentAgent.knowledgeBaseId ? (
+                  <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+                    <Database className="h-3.5 w-3.5 text-primary" />
+                    Knowledge connected
+                  </div>
+                ) : null}
+              </div>
+
+              {resolvedChat && resolvedChat.messages.length > 0 ? (
+                <div className="flex-1">
+                  {resolvedChat.messages.map((message) => (
+                    <ChatMessage
+                      key={message.id}
+                      message={message}
+                      onEdit={handleEditMessage}
+                      onDelete={handleDeleteMessage}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center py-12 text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Bot className="h-7 w-7" />
+                  </div>
+                  <h2 className="mt-6 text-4xl font-semibold tracking-tight">
+                    How can {currentAgent.name} help?
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+                    {currentAgent.systemPrompt}
+                  </p>
+
+                  <div className="mt-8 grid w-full max-w-3xl gap-3 md:grid-cols-2">
+                    {starterPrompts.map((starter) => (
+                      <button
+                        key={starter.title}
+                        type="button"
+                        onClick={() =>
+                          handleSendMessage(starter.prompt, starter.webSearch)
+                        }
+                        className="rounded-[1.5rem] border border-border bg-card p-5 text-left transition-colors hover:bg-accent/40"
+                      >
+                        <p className="font-medium">{starter.title}</p>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          {starter.description}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} className="h-2 shrink-0" />
+            </div>
+          </div>
+
+          <div className="shrink-0 border-t border-border bg-background/95 px-4 py-4 md:px-6">
+            <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              Responses are generated from this agent&apos;s prompt, chat history,
+              and any tools you enable here.
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-            <Select
-              value={currentAgent.model}
-              onValueChange={handleModelChange}
-              disabled={modelsLoading}>
-              <SelectTrigger
-                className="h-8 w-[120px] max-w-[42vw] sm:w-[140px] md:h-9 md:w-[160px]"
-                size="sm">
-                <SelectValue
-                  placeholder={modelsLoading ? 'Loading...' : 'Select model'}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {openaiModels.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 md:h-9 md:w-9"
-              onClick={() =>
-                setSystemPromptSidebarOpen(!systemPromptSidebarOpen)
-              }>
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Scrollable Messages Area */}
-        <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col px-3 md:px-4">
-            {currentChat.messages.length === 0 ? (
-              <div className="flex min-h-[300px] flex-1 items-center justify-center py-10">
-                <div className="text-center">
-                  <h3 className="mb-2 text-lg font-semibold">
-                    Start a conversation
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Send a message to begin chatting with {currentAgent.name}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              currentChat.messages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  message={message}
-                  onEdit={handleEditMessage}
-                  onDelete={handleDeleteMessage}
-                />
-              ))
-            )}
-            <div ref={messagesEndRef} className="h-4 shrink-0" />
-          </div>
-        </div>
-
-        {/* Fixed Input Area */}
-        <div className="shrink-0 border-t border-border bg-background">
-          <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
         </div>
       </div>
 
-      {/* Right Sidebar - System Prompt */}
       <SystemPromptSidebar
         isOpen={systemPromptSidebarOpen}
         onClose={() => setSystemPromptSidebarOpen(false)}

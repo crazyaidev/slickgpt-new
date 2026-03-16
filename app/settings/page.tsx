@@ -1,14 +1,13 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
-import { SidebarNav } from "@/components/sidebar-nav"
+import { Suspense, useEffect, useState } from "react"
+import { Check, Eye, EyeOff, Key, Lock, Sparkles } from "lucide-react"
+
+import { AppShell } from "@/components/app-shell"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { useStore } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
-import { Check, Eye, EyeOff, Key } from "lucide-react"
 
 function SettingsContent() {
   const { apiKeys, setApiKeys, loadFromStorage } = useStore()
@@ -40,171 +39,229 @@ function SettingsContent() {
     })
 
     toast({
-      title: "Settings saved!",
-      description: "Your API keys have been updated successfully.",
+      title: "Settings saved",
+      description: "Your workspace keys are updated and ready to use.",
     })
   }
 
+  const configuredCount = [openaiKey, pineconeKey, webSearchKey].filter(Boolean)
+    .length
+
   return (
-    <div className="fixed inset-0 flex overflow-hidden">
-      <SidebarNav />
-      <main className="ml-64 flex flex-1 flex-col overflow-hidden">
-        <div className="flex h-16 shrink-0 items-center border-b border-border bg-card px-8">
-          <h2 className="text-xl font-semibold text-foreground">Settings</h2>
-        </div>
-        <div className="flex-1 overflow-y-auto p-8">
-          <div className="mx-auto max-w-3xl space-y-6">
-            <div>
-              <h3 className="mb-2 text-2xl font-bold text-foreground">API Configuration</h3>
-              <p className="text-base text-muted-foreground">Manage your API keys for AI services</p>
+    <AppShell
+      title="Settings"
+      description="Store the keys and defaults that power your workspace."
+      action={
+        <Button className="rounded-2xl px-5" onClick={handleSave}>
+          Save changes
+        </Button>
+      }
+    >
+      <div className="space-y-6">
+        <section className="rounded-[2rem] border border-border/70 bg-card/80 p-6 shadow-[0_20px_80px_-52px_rgba(0,0,0,0.65)] backdrop-blur md:p-8">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                Workspace configuration
+              </div>
+              <h2 className="text-3xl font-semibold tracking-tight">
+                Keep configuration simple and close to the chat experience.
+              </h2>
+              <p className="mt-3 text-base leading-7 text-muted-foreground">
+                Keys are stored in the browser for this workspace, so setup stays
+                local and fast while you iterate on assistants.
+              </p>
             </div>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Key className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-base md:text-lg">OpenAI API Key</CardTitle>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
+                  Configured
+                </p>
+                <p className="mt-2 text-2xl font-semibold">{configuredCount}</p>
+                <p className="text-sm text-muted-foreground">Keys saved locally</p>
+              </div>
+              <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
+                  Required
+                </p>
+                <p className="mt-2 text-2xl font-semibold">
+                  {openaiKey ? "Ready" : "OpenAI"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Needed for every chat
+                </p>
+              </div>
+              <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
+                  Security
+                </p>
+                <p className="mt-2 text-2xl font-semibold">Local</p>
+                <p className="text-sm text-muted-foreground">
+                  Stored in browser storage
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="space-y-4">
+            <KeyFieldCard
+              title="OpenAI API key"
+              description="Required for chat, model syncing, and assistant responses."
+              href="https://platform.openai.com/api-keys"
+              placeholder="sk-..."
+              value={openaiKey}
+              onChange={setOpenaiKey}
+              showValue={showOpenaiKey}
+              onToggleShow={() => setShowOpenaiKey((current) => !current)}
+              isConfigured={Boolean(openaiKey)}
+            />
+
+            <KeyFieldCard
+              title="Pinecone API key"
+              description="Optional if you want an external vector database workflow."
+              href="https://www.pinecone.io"
+              placeholder="Enter Pinecone API key"
+              value={pineconeKey}
+              onChange={setPineconeKey}
+              showValue={showPineconeKey}
+              onToggleShow={() => setShowPineconeKey((current) => !current)}
+              isConfigured={Boolean(pineconeKey)}
+            />
+
+            <KeyFieldCard
+              title="Web search API key"
+              description="Optional if you want a separate search provider in addition to OpenAI-backed browsing."
+              placeholder="Enter web search API key"
+              value={webSearchKey}
+              onChange={setWebSearchKey}
+              showValue={showWebSearchKey}
+              onToggleShow={() => setShowWebSearchKey((current) => !current)}
+              isConfigured={Boolean(webSearchKey)}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-[2rem] border border-border/70 bg-card/80 p-6 backdrop-blur">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Lock className="h-5 w-5" />
+              </div>
+              <h3 className="text-lg font-semibold">How this is stored</h3>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                Keys in this app are persisted in browser storage so the
+                interface can stay responsive without a separate backend config
+                flow.
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] border border-border/70 bg-card/80 p-6 backdrop-blur">
+              <h3 className="text-lg font-semibold">Recommended order</h3>
+              <div className="mt-4 space-y-3">
+                <div className="rounded-[1.35rem] border border-border/70 bg-background/60 p-4">
+                  <p className="font-medium">1. Add OpenAI first</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    This unlocks model syncing and every assistant response.
+                  </p>
                 </div>
-                <CardDescription className="text-xs md:text-sm">
-                  Required for all AI features. Get your API key from{" "}
-                  <a
-                    href="https://platform.openai.com/api-keys"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline"
-                  >
-                    OpenAI Platform
-                  </a>
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="openai-key">API Key</Label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Input
-                        id="openai-key"
-                        type={showOpenaiKey ? "text" : "password"}
-                        placeholder="sk-..."
-                        value={openaiKey}
-                        onChange={(e) => setOpenaiKey(e.target.value)}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
-                        onClick={() => setShowOpenaiKey(!showOpenaiKey)}
-                      >
-                        {showOpenaiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                    {openaiKey && (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                        <Check className="h-5 w-5 text-primary" />
-                      </div>
-                    )}
-                  </div>
+                <div className="rounded-[1.35rem] border border-border/70 bg-background/60 p-4">
+                  <p className="font-medium">2. Create an assistant</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Separate different workflows into dedicated prompts.
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Key className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-base md:text-lg">Pinecone API Key</CardTitle>
+                <div className="rounded-[1.35rem] border border-border/70 bg-background/60 p-4">
+                  <p className="font-medium">3. Add knowledge when needed</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Bring in portfolio pieces, notes, or reference docs later.
+                  </p>
                 </div>
-                <CardDescription className="text-xs md:text-sm">
-                  Optional. For vector database and RAG features. Sign up at{" "}
-                  <a
-                    href="https://www.pinecone.io"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline"
-                  >
-                    pinecone.io
-                  </a>
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pinecone-key">API Key</Label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Input
-                        id="pinecone-key"
-                        type={showPineconeKey ? "text" : "password"}
-                        placeholder="Enter Pinecone API key"
-                        value={pineconeKey}
-                        onChange={(e) => setPineconeKey(e.target.value)}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
-                        onClick={() => setShowPineconeKey(!showPineconeKey)}
-                      >
-                        {showPineconeKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                    {pineconeKey && (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                        <Check className="h-5 w-5 text-primary" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Key className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-base md:text-lg">Web Search API Key</CardTitle>
-                </div>
-                <CardDescription className="text-xs md:text-sm">
-                  Optional. For web search features (coming soon)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="web-search-key">API Key</Label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Input
-                        id="web-search-key"
-                        type={showWebSearchKey ? "text" : "password"}
-                        placeholder="Enter web search API key"
-                        value={webSearchKey}
-                        onChange={(e) => setWebSearchKey(e.target.value)}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
-                        onClick={() => setShowWebSearchKey(!showWebSearchKey)}
-                      >
-                        {showWebSearchKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                    {webSearchKey && (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                        <Check className="h-5 w-5 text-primary" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <div className="flex justify-end">
-              <Button onClick={handleSave} size="lg" className="w-full md:w-auto">
-                Save Settings
-              </Button>
+              </div>
             </div>
           </div>
         </div>
-      </main>
+      </div>
+    </AppShell>
+  )
+}
+
+interface KeyFieldCardProps {
+  title: string
+  description: string
+  href?: string
+  placeholder: string
+  value: string
+  onChange: (value: string) => void
+  showValue: boolean
+  onToggleShow: () => void
+  isConfigured: boolean
+}
+
+function KeyFieldCard({
+  title,
+  description,
+  href,
+  placeholder,
+  value,
+  onChange,
+  showValue,
+  onToggleShow,
+  isConfigured,
+}: KeyFieldCardProps) {
+  return (
+    <div className="rounded-[2rem] border border-border/70 bg-card/80 p-6 backdrop-blur">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Key className="h-5 w-5" />
+          </div>
+          <h3 className="text-lg font-semibold">{title}</h3>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+            {description}{" "}
+            {href ? (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary hover:underline"
+              >
+                Learn more
+              </a>
+            ) : null}
+          </p>
+        </div>
+
+        {isConfigured ? (
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            <Check className="h-3.5 w-3.5" />
+            Configured
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-6 flex gap-3">
+        <div className="relative flex-1">
+          <Input
+            type={showValue ? "text" : "password"}
+            placeholder={placeholder}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            className="h-12 rounded-2xl border-border/70 bg-background/60 pr-12"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-xl"
+            onClick={onToggleShow}
+            aria-label={showValue ? "Hide key" : "Show key"}
+          >
+            {showValue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

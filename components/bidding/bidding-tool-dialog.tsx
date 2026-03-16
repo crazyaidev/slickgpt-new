@@ -23,7 +23,7 @@ import type { Message } from "@/lib/types"
 
 export function BiddingToolDialog() {
   const [open, setOpen] = useState(false)
-  const { currentAgentId, agents, settings } = useStore()
+  const { currentAgentId, agents, apiKeys } = useStore()
   const { toast } = useToast()
 
   // Cover letter generation
@@ -60,7 +60,7 @@ export function BiddingToolDialog() {
       return
     }
 
-    if (!settings.openaiApiKey) {
+    if (!apiKeys.openai) {
       toast({
         title: "API key missing",
         description: "Please add your OpenAI API key in Settings.",
@@ -88,7 +88,7 @@ export function BiddingToolDialog() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${settings.openaiApiKey}`,
+          Authorization: `Bearer ${apiKeys.openai}`,
         },
         body: JSON.stringify({
           model: modelName,
@@ -106,9 +106,6 @@ export function BiddingToolDialog() {
 Job Title: ${jobTitle || "Not specified"}
 Job Description: ${jobDescription}
 Client Details: ${clientDetails || "Not provided"}
-
-My Profile:
-${settings.userProfile || "Not provided"}
 
 Create a tailored, professional cover letter that highlights relevant experience and demonstrates value.`,
             },
@@ -149,7 +146,7 @@ Create a tailored, professional cover letter that highlights relevant experience
       return
     }
 
-    if (!settings.openaiApiKey) {
+    if (!apiKeys.openai) {
       toast({
         title: "API key missing",
         description: "Please add your OpenAI API key in Settings.",
@@ -177,7 +174,7 @@ Create a tailored, professional cover letter that highlights relevant experience
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${settings.openaiApiKey}`,
+          Authorization: `Bearer ${apiKeys.openai}`,
         },
         body: JSON.stringify({
           model: modelName,
@@ -194,9 +191,6 @@ Create a tailored, professional cover letter that highlights relevant experience
 Job Description: ${proposalJobDescription}
 Proposed Budget: ${proposalBudget || "To be discussed"}
 Timeline: ${proposalTimeline || "Flexible"}
-
-My Profile:
-${settings.userProfile || "Not provided"}
 
 Create a comprehensive proposal with: understanding of requirements, proposed approach, timeline breakdown, and deliverables.`,
             },
@@ -237,7 +231,7 @@ Create a comprehensive proposal with: understanding of requirements, proposed ap
       return
     }
 
-    if (!settings.openaiApiKey) {
+    if (!apiKeys.openai) {
       toast({
         title: "API key missing",
         description: "Please add your OpenAI API key in Settings.",
@@ -266,7 +260,7 @@ Create a comprehensive proposal with: understanding of requirements, proposed ap
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${settings.openaiApiKey}`,
+          Authorization: `Bearer ${apiKeys.openai}`,
         },
         body: JSON.stringify({
           model: agent?.model || "gpt-3.5-turbo",
@@ -312,7 +306,7 @@ Create a comprehensive proposal with: understanding of requirements, proposed ap
   }
 
   const handleAnalyzeImage = async () => {
-    if (!settings.openaiApiKey) {
+    if (!apiKeys.openai) {
       toast({
         title: "API key missing",
         description: "Please add your OpenAI API key in Settings.",
@@ -337,7 +331,7 @@ Create a comprehensive proposal with: understanding of requirements, proposed ap
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${settings.openaiApiKey}`,
+          Authorization: `Bearer ${apiKeys.openai}`,
         },
         body: JSON.stringify({
           model: "gpt-4",

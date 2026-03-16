@@ -1,25 +1,28 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useStore } from "@/lib/store"
-import { Textarea } from "@/components/ui/textarea"
+import { useEffect, useState } from "react"
+import { Save, X } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { X, Save } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import { useStore } from "@/lib/store"
 
 interface SystemPromptSidebarProps {
   isOpen: boolean
   onClose: () => void
 }
 
-export function SystemPromptSidebar({ isOpen, onClose }: SystemPromptSidebarProps) {
+export function SystemPromptSidebar({
+  isOpen,
+  onClose,
+}: SystemPromptSidebarProps) {
   const { currentAgentId, agents, updateAgent } = useStore()
   const { toast } = useToast()
   const [systemPrompt, setSystemPrompt] = useState("")
   const [hasChanges, setHasChanges] = useState(false)
 
-  const currentAgent = agents.find((a) => a.id === currentAgentId)
+  const currentAgent = agents.find((agent) => agent.id === currentAgentId)
 
   useEffect(() => {
     if (currentAgent) {
@@ -29,20 +32,17 @@ export function SystemPromptSidebar({ isOpen, onClose }: SystemPromptSidebarProp
   }, [currentAgent, isOpen])
 
   const handleSave = () => {
-    if (!currentAgentId) return
+    if (!currentAgentId) {
+      return
+    }
 
     updateAgent(currentAgentId, { systemPrompt })
     setHasChanges(false)
     toast({
       title: "System prompt updated",
-      description: "Your changes have been saved and will be reflected in the agent editor.",
+      description: "The assistant will use this configuration in the next response.",
     })
     onClose()
-  }
-
-  const handleChange = (value: string) => {
-    setSystemPrompt(value)
-    setHasChanges(value !== (currentAgent?.systemPrompt || ""))
   }
 
   if (!currentAgent || !isOpen) {
@@ -51,68 +51,78 @@ export function SystemPromptSidebar({ isOpen, onClose }: SystemPromptSidebarProp
 
   return (
     <>
-      {/* Overlay */}
-      <div
-        className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+      <button
+        type="button"
+        className="fixed inset-0 z-40 bg-black/45"
         onClick={onClose}
+        aria-label="Close prompt editor"
       />
 
-      {/* Modal Form */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div
-          className="flex w-[90vw] md:w-[60vw] md:min-w-[600px] md:max-w-[90vw] flex-col rounded-lg border border-border bg-background shadow-lg"
-          style={{ 
-            height: "80vh",
-            minHeight: "400px",
-            maxHeight: "90vh"
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-6">
-            <div>
-              <h2 className="text-lg font-semibold">System Prompt</h2>
-              <p className="text-sm text-muted-foreground">
-                Define the behavior and personality of your AI agent
-              </p>
-            </div>
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={onClose}>
-              <X className="h-4 w-4" />
+      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-border bg-background shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-5">
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+              Prompt editor
+            </p>
+            <h2 className="mt-1 text-xl font-semibold">System prompt</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Refine the role, constraints, and voice for{" "}
+              <span className="font-medium text-foreground">
+                {currentAgent.name}
+              </span>
+              .
+            </p>
+          </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="rounded-full"
+            onClick={onClose}
+            aria-label="Close prompt editor"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-5">
+          <div className="rounded-[1.5rem] border border-border bg-card p-4">
+            <p className="text-sm leading-6 text-muted-foreground">
+              Keep the prompt focused on responsibilities, boundaries, and the
+              kind of help this agent should provide.
+            </p>
+          </div>
+
+          <Textarea
+            value={systemPrompt}
+            onChange={(event) => {
+              setSystemPrompt(event.target.value)
+              setHasChanges(event.target.value !== (currentAgent.systemPrompt || ""))
+            }}
+            placeholder="Enter system prompt here..."
+            className="mt-4 min-h-[65vh] rounded-[1.5rem] border-border bg-card font-mono text-sm"
+          />
+        </div>
+
+        <div className="border-t border-border px-5 py-4">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              className="rounded-full border-border bg-transparent"
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="rounded-full px-5"
+              onClick={handleSave}
+              disabled={!hasChanges}
+            >
+              <Save className="h-4 w-4" />
+              Save changes
             </Button>
           </div>
-
-          {/* Content */}
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
-            <div className="mb-4 shrink-0">
-              <Label htmlFor="system-prompt" className="text-sm font-medium">
-                Prompt
-              </Label>
-            </div>
-
-            <div className="flex min-h-0 flex-1 flex-col gap-4">
-              <Textarea
-                id="system-prompt"
-                value={systemPrompt}
-                onChange={(e) => handleChange(e.target.value)}
-                placeholder="Enter system prompt here..."
-                className="flex-1 min-h-0 resize-none font-mono text-sm"
-              />
-
-              {hasChanges && (
-                <div className="flex shrink-0 justify-end gap-2">
-                  <Button variant="outline" onClick={onClose}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSave}>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Changes
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
-      </div>
+      </aside>
     </>
   )
 }

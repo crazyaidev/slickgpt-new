@@ -48,11 +48,18 @@ const markdownComponents: Components = {
       <pre className="min-w-full p-4 text-[13px] leading-6">{children}</pre>
     </div>
   ),
-  code: ({ inline, className, children, ...props }) => {
+  code: (props) => {
+    const {
+      inline,
+      className,
+      children,
+      ...rest
+    } = props as ComponentPropsWithoutRef<"code"> & { inline?: boolean }
+
     if (inline) {
       return (
         <code
-          {...props}
+          {...rest}
           className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.9em] font-medium text-foreground"
         >
           {children}
@@ -62,7 +69,7 @@ const markdownComponents: Components = {
 
     return (
       <code
-        {...props}
+        {...rest}
         className={cn("font-mono text-[13px] text-zinc-50", className)}
       >
         {children}

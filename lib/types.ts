@@ -38,6 +38,8 @@ export interface ChatSession {
   id: string
   agentId: string
   title: string
+  titleStatus?: "pending" | "fallback" | "generated"
+  titleContextKey?: string | null
   messages: Message[]
   createdAt: string
   updatedAt: string

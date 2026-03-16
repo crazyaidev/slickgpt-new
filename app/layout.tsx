@@ -6,12 +6,19 @@ import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/components/theme-provider"
 import "./globals.css"
 
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
+const geist = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist",
+})
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+})
 
 export const metadata: Metadata = {
-  title: "AI Agent Builder - Create Custom AI Assistants",
-  description: "Build and manage custom AI agents for Upwork bidding, cover letters, and client communication",
+  title: "SlickGPT",
+  description:
+    "A chat-first workspace for custom assistants, reusable prompts, knowledge, and proposal workflows.",
   generator: "v0.app",
   icons: {
     icon: [
@@ -39,7 +46,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans antialiased h-full overflow-hidden`}>
+      <body
+        className={`${geist.variable} ${geistMono.variable} min-h-screen font-sans antialiased`}
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
