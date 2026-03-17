@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { FileUp, Globe, Loader2, SendHorizontal } from "lucide-react"
+import { ArrowUp, FileUp, Globe, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -94,7 +94,7 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <SendHorizontal className="h-4 w-4" />
+              <ArrowUp className="h-4 w-4" />
             )}
           </Button>
         </div>

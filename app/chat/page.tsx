@@ -8,7 +8,7 @@ import {
   Database,
   Globe,
   Menu,
-  Settings2,
+  SlidersHorizontal,
   Sparkles,
 } from 'lucide-react';
 
@@ -114,9 +114,14 @@ export default function ChatPage() {
     setCurrentChatId,
   ]);
 
+  const lastMessageContent =
+    resolvedChat?.messages[resolvedChat.messages.length - 1]?.content;
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [resolvedChatId, resolvedChat?.messages.length]);
+    messagesEndRef.current?.scrollIntoView({
+      behavior: isLoading ? 'instant' : 'smooth',
+    });
+  }, [resolvedChatId, resolvedChat?.messages.length, lastMessageContent, isLoading]);
 
   const handleModelChange = (newModel: string) => {
     if (!currentAgentId || !currentAgent) {
@@ -482,7 +487,7 @@ export default function ChatPage() {
                 className="h-9 w-9 rounded-full border-border bg-card"
                 onClick={() => setSystemPromptSidebarOpen(true)}
               >
-                <Settings2 className="h-4 w-4" />
+                <SlidersHorizontal className="h-4 w-4" />
               </Button>
             </div>
           </header>
